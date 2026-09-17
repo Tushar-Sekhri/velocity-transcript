@@ -1,0 +1,4 @@
+timestamp,dataset,num_classes,train_samples,test_samples,sequence_length,features_per_frame,model,learning_rate,epochs,batch_size,train_acc,test_acc
+2026-09-17T11:40:49,INCLUDE-Greetings-3word,3,41,22,90,126,"LSTM(hidden=64, layers=1)",0.001,60,8,1.0,0.909
+2026-09-17T11:59:47,INCLUDE-Greetings-3word,9,101,89,90,126,"LSTM(hidden=64, layers=1)",0.001,60,8,0.723,0.596
+2026-09-17T12:05:07,INCLUDE-Greetings-3word,9,149,41,90,126,"LSTM(hidden=64, layers=1)",0.001,60,8,0.718,0.293
