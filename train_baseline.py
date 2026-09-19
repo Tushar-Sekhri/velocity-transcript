@@ -9,6 +9,7 @@ Usage:
 
 import os
 import csv
+import json
 import datetime
 import numpy as np
 import torch
@@ -150,6 +151,15 @@ def main():
 
     print("\nClassification Report:")
     print(classification_report(all_labels, all_preds, target_names=label_names, zero_division=0))
+
+    # ---- Save model + label mapping for reuse (e.g. evaluate_on_own.py) ----
+    os.makedirs("models", exist_ok=True)
+    torch.save(model.state_dict(), "models/baseline_lstm.pt")
+    with open("models/label_map.json", "w") as f:
+        json.dump({"idx_to_label": idx_to_label, "input_size": input_size,
+                   "hidden_size": HIDDEN_SIZE, "num_layers": NUM_LAYERS,
+                   "num_classes": num_classes}, f, indent=2)
+    print("Model saved to models/baseline_lstm.pt")
 
     # ---- Log this experiment ----
     log_experiment({

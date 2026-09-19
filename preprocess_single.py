@@ -1,8 +1,10 @@
 """
-Velocity Transcript - Step 5
+Velocity Transcript - Step 5 (+ velocity features)
 Processes ONE video into a normalized, fixed-length landmark sequence
-ready for model training. Prints the resulting shape and some sanity
-stats so we can verify correctness before batch-processing everything.
+ready for model training. Also provides add_velocity_features() to
+augment the position sequence with frame-to-frame motion, as an
+experiment to help the model generalize better across recording
+sessions (see session_split.py findings).
 
 Usage:
     python preprocess_single.py "data/raw/.../video.MOV"
@@ -19,7 +21,8 @@ SEQUENCE_LENGTH = 90  # fixed number of frames per sample, chosen from our batch
 NUM_LANDMARKS = 21
 COORDS_PER_LANDMARK = 3  # x, y, z
 FEATURES_PER_HAND = NUM_LANDMARKS * COORDS_PER_LANDMARK  # 63
-FEATURES_PER_FRAME = FEATURES_PER_HAND * 2  # 126 (left hand + right hand)
+FEATURES_PER_FRAME = FEATURES_PER_HAND * 2  # 126 (left hand + right hand) - position only
+FEATURES_PER_FRAME_WITH_VELOCITY = FEATURES_PER_FRAME * 2  # 252 (position + velocity)
 
 
 def normalize_hand(landmarks):
@@ -32,9 +35,8 @@ def normalize_hand(landmarks):
     wrist = coords[0]
     centered = coords - wrist  # translation invariance
 
-    # landmark 9 = middle finger MCP (base knuckle) - used as a stable scale reference
     scale_ref = np.linalg.norm(centered[9])
-    if scale_ref < 1e-6:  # avoid divide-by-zero on degenerate frames
+    if scale_ref < 1e-6:
         scale_ref = 1e-6
 
     normalized = centered / scale_ref
@@ -58,7 +60,6 @@ def extract_raw_sequence(video_path):
     if not cap.isOpened():
         raise RuntimeError(f"Could not open video: {video_path}")
 
-    # Carry-forward buffers - start as zeros until each hand is first seen
     last_left = [0.0] * FEATURES_PER_HAND
     last_right = [0.0] * FEATURES_PER_HAND
 
@@ -79,7 +80,7 @@ def extract_raw_sequence(video_path):
             for hand_landmarks, handedness in zip(
                 results.multi_hand_landmarks, results.multi_handedness
             ):
-                label = handedness.classification[0].label  # "Left" or "Right"
+                label = handedness.classification[0].label
                 coords = [(lm.x, lm.y, lm.z) for lm in hand_landmarks.landmark]
                 normalized = normalize_hand(coords)
 
@@ -88,7 +89,6 @@ def extract_raw_sequence(video_path):
                 else:
                     right_vec = normalized
 
-        # Carry forward if a hand wasn't detected this frame
         if left_vec is None:
             left_vec = last_left
         else:
@@ -99,7 +99,7 @@ def extract_raw_sequence(video_path):
         else:
             last_right = right_vec
 
-        frame_features = left_vec + right_vec  # 63 + 63 = 126
+        frame_features = left_vec + right_vec
         sequence.append(frame_features)
 
     cap.release()
@@ -112,7 +112,7 @@ def resample_sequence(sequence, target_length=SEQUENCE_LENGTH):
     Uniformly samples `target_length` frames from the sequence,
     preserving the full motion regardless of original clip length.
     """
-    sequence = np.array(sequence)  # shape (original_length, 126)
+    sequence = np.array(sequence)
     original_length = sequence.shape[0]
 
     if original_length == target_length:
@@ -121,6 +121,18 @@ def resample_sequence(sequence, target_length=SEQUENCE_LENGTH):
     indices = np.linspace(0, original_length - 1, target_length)
     indices = np.round(indices).astype(int)
     return sequence[indices]
+
+
+def add_velocity_features(fixed_sequence):
+    """
+    Takes a (target_length, 126) position sequence and returns a
+    (target_length, 252) sequence: original position concatenated
+    with frame-to-frame velocity (position difference).
+
+    The first frame's velocity is zero (no previous frame to diff against).
+    """
+    velocity = np.diff(fixed_sequence, axis=0, prepend=fixed_sequence[0:1])
+    return np.concatenate([fixed_sequence, velocity], axis=1)
 
 
 if __name__ == "__main__":
@@ -135,9 +147,10 @@ if __name__ == "__main__":
     print(f"Raw sequence length: {len(raw_sequence)} frames")
 
     fixed_sequence = resample_sequence(raw_sequence)
-    print(f"Resampled sequence shape: {fixed_sequence.shape}")  # should be (90, 126)
+    print(f"Resampled sequence shape (position only): {fixed_sequence.shape}")
 
-    print(f"\nSample values (frame 0, first 6 features): {fixed_sequence[0][:6]}")
-    print(f"Sample values (frame 45, first 6 features): {fixed_sequence[45][:6]}")
-    print(f"\nMin value in sequence: {fixed_sequence.min():.3f}")
-    print(f"Max value in sequence: {fixed_sequence.max():.3f}")
+    with_velocity = add_velocity_features(fixed_sequence)
+    print(f"With velocity features: {with_velocity.shape}")  # should be (90, 252)
+
+    print(f"\nMin/Max (position only): {fixed_sequence.min():.3f} / {fixed_sequence.max():.3f}")
+    print(f"Min/Max (with velocity): {with_velocity.min():.3f} / {with_velocity.max():.3f}")

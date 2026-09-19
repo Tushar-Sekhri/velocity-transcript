@@ -1,0 +1,17 @@
+{
+  "idx_to_label": {
+    "0": "Alright",
+    "1": "Good Morning",
+    "2": "Good afternoon",
+    "3": "Good evening",
+    "4": "Good night",
+    "5": "Hello",
+    "6": "How are you",
+    "7": "Pleased",
+    "8": "Thank you"
+  },
+  "input_size": 252,
+  "hidden_size": 64,
+  "num_layers": 1,
+  "num_classes": 9
+}

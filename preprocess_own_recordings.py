@@ -1,12 +1,12 @@
 """
-Velocity Transcript - Step 6 (+ velocity features experiment)
-Processes every video across our target words into fixed-length,
-normalized landmark sequences WITH velocity features, and saves:
-    data/processed/X.npy  -> shape (num_samples, 90, 252)
-    data/processed/y.npy  -> shape (num_samples,) of string labels
+Velocity Transcript - Step 10
+Processes your own recorded clips (data/own_recordings/<Word>/take_XX.mp4)
+using the exact same pipeline as the INCLUDE data, saving:
+    data/processed/X_own.npy
+    data/processed/y_own.npy
 
 Usage:
-    python batch_preprocess.py
+    python preprocess_own_recordings.py
 """
 
 import glob
@@ -20,20 +20,28 @@ from preprocess_single import (
     SEQUENCE_LENGTH,
     FEATURES_PER_FRAME_WITH_VELOCITY,
 )
-from config import WORD_FOLDERS
 
+OWN_RECORDINGS_DIR = "data/own_recordings"
 OUTPUT_DIR = "data/processed"
 
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if not os.path.isdir(OWN_RECORDINGS_DIR):
+        print(f"No folder found at {OWN_RECORDINGS_DIR} - nothing to process.")
+        return
+
+    word_folders = sorted(
+        d for d in os.listdir(OWN_RECORDINGS_DIR)
+        if os.path.isdir(os.path.join(OWN_RECORDINGS_DIR, d))
+    )
 
     X = []
     y = []
     skipped = []
 
-    for word, folder in WORD_FOLDERS.items():
-        video_paths = sorted(glob.glob(os.path.join(folder, "*.MOV")))
+    for word in word_folders:
+        folder = os.path.join(OWN_RECORDINGS_DIR, word)
+        video_paths = sorted(glob.glob(os.path.join(folder, "*.mp4")))
         print(f"[{word}] Found {len(video_paths)} clips")
 
         for path in video_paths:
@@ -59,18 +67,19 @@ def main():
     X = np.array(X)
     y = np.array(y)
 
-    np.save(os.path.join(OUTPUT_DIR, "X.npy"), X)
-    np.save(os.path.join(OUTPUT_DIR, "y.npy"), y)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    np.save(os.path.join(OUTPUT_DIR, "X_own.npy"), X)
+    np.save(os.path.join(OUTPUT_DIR, "y_own.npy"), y)
 
     print("\n---- Summary ----")
     print(f"Total samples saved: {len(y)}")
-    for word in WORD_FOLDERS:
+    for word in word_folders:
         count = int(np.sum(y == word))
         print(f"  {word}: {count} samples")
 
-    print(f"\nX shape: {X.shape}")
-    print(f"y shape: {y.shape}")
-    print(f"Saved to: {OUTPUT_DIR}/X.npy and {OUTPUT_DIR}/y.npy")
+    print(f"\nX_own shape: {X.shape}")
+    print(f"y_own shape: {y.shape}")
+    print(f"Saved to: {OUTPUT_DIR}/X_own.npy and y_own.npy")
 
     if skipped:
         print(f"\n{len(skipped)} clips were skipped:")
