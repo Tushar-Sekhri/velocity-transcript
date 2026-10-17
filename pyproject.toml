@@ -1,0 +1,23 @@
+[project]
+name = "velocity-transcript"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Shivang", email = "shivangkainth94@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mediapipe>=0.9.0",
+    "numpy>=1.20.0",
+    "opencv-python>=4.5.5",
+    "scikit-learn>=1.2.0",
+    "torch>=1.12.0",
+]
+
+[project.scripts]
+velocity-transcript = "velocity_transcript:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
